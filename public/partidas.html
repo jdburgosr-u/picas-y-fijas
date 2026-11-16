@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Partidas de Picas y Fijas</title>
+</head>
+<body>
+    <h1>Partidas de Picas y Fijas</h1>
+    <p id="saludo"></p>
+    <p><a href="/">Volver al inicio</a></p>
+
+    <h2>Crear o unirse a una partida</h2>
+    <label for="secreto">Tu número secreto</label>
+    <input id="secreto" type="password" inputmode="numeric" maxlength="4" autocomplete="off">
+    <button id="crear" type="button">Crear partida</button>
+    <p>Para unirte, escribe tu secreto y pulsa Unirse en una partida abierta.</p>
+    <button id="listar" type="button">Actualizar lista</button>
+    <p id="sin-partidas" hidden>Todavía no hay partidas.</p>
+    <ul id="lista"></ul>
+
+    <p id="mensaje" role="status"></p>
+
+    <script>
+        const elemento = (id) => document.getElementById(id);
+        const mensaje = elemento('mensaje');
+        const jugador = JSON.parse(sessionStorage.getItem('jugador'));
+
+        async function pedir(ruta, metodo = 'GET', datos) {
+            const opciones = { method: metodo };
+            if (datos !== undefined) {
+                opciones.headers = { 'Content-Type': 'application/json' };
+                opciones.body = JSON.stringify(datos);
+            }
+
+            const respuesta = await fetch(ruta, opciones);
+            const resultado = await respuesta.json().catch(() => null);
+
+            if (!respuesta.ok) {
+                throw new Error(resultado?.message ?? metodo + ' ' + ruta + ' devolvió HTTP ' + respuesta.status + '.');
+            }
+            if (resultado === null) {
+                throw new Error('La API debe responder en JSON.');
+            }
+            return resultado;
+        }
+
+        function leerNumero(id) {
+            const valor = elemento(id).value;
+            if (!/^[1-9][0-9]{3}$/.test(valor)) {
+                throw new Error('Ingresa un número entero del 1000 al 9999.');
+            }
+            if (new Set(valor).size !== 4) {
+                throw new Error('Los cuatro dígitos deben ser diferentes.');
+            }
+            return Number(valor);
+        }
+
+        function conectar(boton, accion) {
+            boton.onclick = async () => {
+                mensaje.textContent = '';
+                boton.disabled = true;
+                try {
+                    await accion();
+                } catch (error) {
+                    mensaje.textContent = error.message;
+                } finally {
+                    boton.disabled = false;
+                }
+            };
+        }
+
+        function botonDePartida(texto, accion) {
+            const boton = document.createElement('button');
+            boton.type = 'button';
+            boton.textContent = texto;
+            conectar(boton, accion);
+            return boton;
+        }
+
+        async function listarPartidas() {
+            const respuesta = await pedir('/juego');
+            const partidas = respuesta.data ?? respuesta;
+            const lista = elemento('lista');
+            lista.replaceChildren();
+            elemento('sin-partidas').hidden = partidas.length > 0;
+
+            for (const partida of partidas) {
+                const fila = document.createElement('li');
+                const creador = partida.creador?.nombre ?? partida.creador ?? 'Sin nombre';
+                fila.textContent = 'Partida ' + partida.id + ' | ' + partida.estado + ' | Creada por ' + creador + ' ';
+                fila.append(botonDePartida('Ver estado', () => verPartida(partida.id)));
+
+                if (partida.estado === 'sin_completar' && partida.creadorId !== jugador.id) {
+                    fila.append(' ', botonDePartida('Unirse', () => unirse(partida.id)));
+                }
+
+                lista.append(fila);
+            }
+        }
+
+        async function crearPartida() {
+            const num = leerNumero('secreto');
+            const respuesta = await pedir('/juego', 'POST', { creadorId: jugador.id, num });
+            elemento('secreto').value = '';
+            verPartida(respuesta.data.id);
+        }
+
+        async function unirse(id) {
+            const num = leerNumero('secreto');
+            await pedir('/juego/' + id, 'PUT', {
+                jugadorId: jugador.id,
+                nombre: jugador.nombre,
+                num,
+            });
+            elemento('secreto').value = '';
+            verPartida(id);
+        }
+
+        function verPartida(id) {
+            window.location.href = '/jugar.html?id=' + id;
+        }
+
+        if (jugador?.id) {
+            elemento('saludo').textContent = 'Hola, ' + jugador.nombre;
+            conectar(elemento('crear'), crearPartida);
+            conectar(elemento('listar'), listarPartidas);
+            listarPartidas().catch((error) => {
+                mensaje.textContent = error.message;
+            });
+        } else {
+            window.location.replace('/');
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Entrar a Picas y Fijas</title>
+</head>
+<body>
+    <h1>Picas y Fijas</h1>
+
+    <form id="login">
+        <label for="nombre">Nombre</label>
+        <input id="nombre" autocomplete="given-name" required>
+        <button id="entrar" type="submit">Entrar</button>
+    </form>
+
+    <p id="mensaje" role="status"></p>
+
+    <script>
+        const formulario = document.getElementById('login');
+        const boton = document.getElementById('entrar');
+        const mensaje = document.getElementById('mensaje');
+
+        formulario.onsubmit = async (evento) => {
+            evento.preventDefault();
+            const nombre = document.getElementById('nombre').value.trim();
+
+            if (!nombre) {
+                mensaje.textContent = 'Escribe tu nombre.';
+                return;
+            }
+
+            boton.disabled = true;
+            mensaje.textContent = '';
+
+            try {
+                const respuesta = await fetch('/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nombre }),
+                });
+                const resultado = await respuesta.json().catch(() => null);
+
+                if (!respuesta.ok) {
+                    throw new Error(resultado?.message ?? 'POST /login devolvió HTTP ' + respuesta.status + '.');
+                }
+
+                const jugador = resultado?.data;
+                if (!jugador?.id) {
+                    throw new Error('El login debe devolver el ID del jugador en data.id.');
+                }
+
+                // Conserva el ID para usarlo en la siguiente página.
+                sessionStorage.setItem('jugador', JSON.stringify({ id: jugador.id, nombre }));
+                window.location.href = '/partidas.html';
+            } catch (error) {
+                mensaje.textContent = error.message;
+            } finally {
+                boton.disabled = false;
+            }
+        };
+    </script>
+</body>
+</html>
