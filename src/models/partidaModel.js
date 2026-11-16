@@ -33,6 +33,38 @@ class partidaModel {
         partida.turno = participantes[randomInt(2)];
     }
 
+    static calcular(numero, intento){
+        const numeroStr = String(numero);
+        const intentoStr = String(intento);
+
+        let picas = 0;
+        let fijas = 0;
+
+        for (let i = 0; i < 4; i++) {
+            if (intentoStr[i] === numeroStr[i]) {
+                fijas++;
+            } else if (numeroStr.includes(intentoStr[i])) {
+                picas++;
+            }   
+        }
+        return { picas, fijas };
+    }
+
+    static jugar(partida, jugadorId, num) {
+        const numero = jugadorId === partida.creadorId ? partida.segundoNumero : partida.numero;
+        const resultado = partidaModel.calcular(numero, num);
+
+        if (resultado.fijas === 4) {
+            partida.ganador = jugadorId;
+            partida.estado = 'terminado';
+            partida.turno = null;
+        } else {
+            partida.turno = jugadorId === partida.creadorId ? partida.segundoId : partida.creadorId;
+        }
+
+        return resultado;
+    }
+
     static getPartida(id) {
         const partida = partidas.get(id);
         if (!partida) return null;

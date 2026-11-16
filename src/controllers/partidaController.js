@@ -56,7 +56,33 @@ class partidaController {
         return res.json({ success: true, data: partidaModel.getPartida(partida.id) });
     }
 
+    static jugar(req, res) {
+        const partida = partidaModel.buscarPartida(Number(req.params.id));
+        if (!partida) return res.status(404).json({ success: false, message: 'La partida no existe.' });
 
+        const { jugadorId, num } = req.body ?? {};
+
+        if (jugadorId !== partida.creadorId && jugadorId !== partida.segundoId) {
+            return res.status(403).json({ success: false, message: 'No perteneces a esta partida.' });
+        }
+        if (partida.estado !== 'en_juego') {
+            return res.status(409).json({ success: false, message: 'La partida no está en juego.' });
+        }
+        if (partida.turno !== jugadorId) {
+            return res.status(409).json({ success: false, message: 'No es tu turno.' });
+        }
+
+
+        const resultado = partidaModel.jugar(partida, jugadorId, num);
+        return res.json({
+            success: true,
+            data: {
+                ...resultado,
+                partida: partidaModel.getPartida(partida.id),
+            },
+        });
+        
+    }
 }
 
 module.exports = partidaController;
