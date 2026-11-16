@@ -8,11 +8,12 @@ class partidaModel {
   static getPartidas() {
     return Array.from(partidas.values(), (partida) => partidaModel.getPartida(partida.id));
   }
-  static crearPartida(creadorId, num) {
+  static crearPartida(creadorId, num, nombre) {
     const id = partidas.size + 1;
     const numero = num;
     const partida = {
             id,
+            nombre: nombre || 'Partida #' + String(id).padStart(3, '0'),
             creadorId,
             numero: num,
             segundoId: null,
@@ -20,6 +21,7 @@ class partidaModel {
             turno: null,
             ganador: null,
             estado: 'sin_completar',
+            intentos: [],
         };
     partidas.set(id, partida);
     return partida;
@@ -50,9 +52,14 @@ class partidaModel {
         return { picas, fijas };
     }
 
+    static yaIntentado(partida, jugadorId, num) {
+        return partida.intentos.some((intento) => intento.jugadorId === jugadorId && intento.num === num);
+    }
+
     static jugar(partida, jugadorId, num) {
         const numero = jugadorId === partida.creadorId ? partida.segundoNumero : partida.numero;
         const resultado = partidaModel.calcular(numero, num);
+        partida.intentos.push({ jugadorId, num, ...resultado });
 
         if (resultado.fijas === 4) {
             partida.ganador = jugadorId;
@@ -71,6 +78,7 @@ class partidaModel {
 
         return {
             id: partida.id,
+            nombre: partida.nombre,
             creadorId: partida.creadorId,
             creador: jugadores.get(partida.creadorId)?.nombre ?? '-',
             segundo: jugadores.get(partida.segundoId)?.nombre ?? '-',
