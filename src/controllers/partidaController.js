@@ -14,6 +14,7 @@ class partidaController {
         });
     }
     static getPartidas(req, res) {
+        try{
                 const partidas = partidaModel.getPartidas();
                 res.json({
                     succes: true,
@@ -21,6 +22,13 @@ class partidaController {
                     data: partidas,
                     count: partidas.length,
                 });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                message: 'Error al obtener las partidas',
+                error: error.message,
+            });
+        }
     }
 
     static createPartidas(req, res) {
