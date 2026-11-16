@@ -1,156 +1,153 @@
-const partidaModel = require('../models/partidaModel');
-const { jugadores } = require('../../memoria.js');
+const partidaModel = require("../models/partidaModel");
+const { jugadores } = require("../../memoria.js");
+const validarNumero = require("../utils/validarNumero");
 
 class partidaController {
-    
-    static mostrarPartida(req, res) {
-        const id = Number(req.params.id);
-        const partida = partidaModel.getPartida(id);
-        if (!partida) return res.status(404).json({ success: false, message: 'La partida no existe.' });
+  static mostrarPartida(req, res) {
+    const id = Number(req.params.id);
+    const partida = partidaModel.getPartida(id);
+    if (!partida)
+      return res
+        .status(404)
+        .json({ success: false, message: "La partida no existe." });
 
-        return res.json({
-             success: true,
-            data: partida 
-        });
+    return res.json({
+      success: true,
+      data: partida,
+    });
+  }
+  static getPartidas(req, res) {
+    try {
+      const partidas = partidaModel.getPartidas();
+      res.json({
+        succes: true,
+        message: "Partidas obtenidas correctamente",
+        data: partidas,
+        count: partidas.length,
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: "Error al obtener las partidas",
+        error: error.message,
+      });
     }
-    static getPartidas(req, res) {
-        try{
-                const partidas = partidaModel.getPartidas();
-                res.json({
-                    succes: true,
-                    message: 'Partidas obtenidas correctamente',
-                    data: partidas,
-                    count: partidas.length,
-                });
-        } catch (error) {
-            res.status(500).json({
-                success: false,
-                message: 'Error al obtener las partidas',
-                error: error.message,
-            });
-        }
-    }
+  }
 
-    static createPartidas(req, res) {
-        const {creadorId, num} = req.body ?? {};
-
-        if (!Number.isInteger(num)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Ingresa un número entero sin letras ni comillas.',
-            });
-        }
-
-        if (num < 1000 || num > 9999) {
-            return res.status(400).json({
-                success: false,
-                message: 'El número debe tener 4 dígitos.',
-            });
-        }
-
-        if (new Set(String(num)).size !== 4) {
-            return res.status(400).json({
-                success: false,
-                message: 'Los dígitos no se pueden repetir.',
-            });
-        }
-
-        const partida = partidaModel.crearPartida(creadorId, num);
-        res.json({
-            success: true,
-            message: 'Partida creada correctamente',
-            data: partidaModel.getPartida(partida.id),
+  static createPartidas(req, res) {
+    const { creadorId, num, nombre } = req.body ?? {};
+    if (
+      nombre !== undefined &&
+      (typeof nombre !== "string" ||
+        !nombre.trim() ||
+        nombre.trim().length > 60)
+    ) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message:
+            "El nombre de la partida debe tener entre 1 y 60 caracteres.",
         });
     }
 
-    static unirsePartida(req, res) {
-        const id = Number(req.params.id);
-        const partida = partidaModel.buscarPartida(id);
+    const { numero, error } = validarNumero(num);
+    if (error) return res.status(400).json({ success: false, message: error });
 
-        const { jugadorId, nombre, num } = req.body ?? {};
-        const jugador = jugadores.get(jugadorId);
+    const partida = partidaModel.crearPartida(
+      creadorId,
+      numero,
+      nombre?.trim()
+    );
+    res.json({
+      success: true,
+      message: "Partida creada correctamente",
+      data: partidaModel.getPartida(partida.id),
+    });
+  }
 
-        if (!jugador) return res.status(401).json({ 
-            success: false, 
-            message: 'Primero inicia sesión.' 
+  static unirsePartida(req, res) {
+    const id = Number(req.params.id);
+    const partida = partidaModel.buscarPartida(id);
+    if (!partida)
+      return res
+        .status(404)
+        .json({ success: false, message: "La partida no existe." });
+
+    const { jugadorId, nombre, num } = req.body ?? {};
+    const jugador = jugadores.get(jugadorId);
+
+    if (!jugador)
+      return res.status(401).json({
+        success: false,
+        message: "Primero inicia sesión.",
+      });
+
+    if (partida.estado !== "sin_completar") {
+      return res
+        .status(409)
+        .json({
+          success: false,
+          message: "La partida ya tiene dos jugadores.",
         });
-
-        if (partida.estado !== 'sin_completar') {
-            return res.status(409).json({ success: false, message: 'La partida ya tiene dos jugadores.' });
-        }
-
-        if (!Number.isInteger(num)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Ingresa un número entero sin letras ni comillas.',
-            });
-        }
-
-        if (num < 1000 || num > 9999) {
-            return res.status(400).json({
-                success: false,
-                message: 'El número debe tener 4 dígitos.',
-            });
-        }
-
-        if (new Set(String(num)).size !== 4) {
-            return res.status(400).json({
-                success: false,
-                message: 'Los dígitos no se pueden repetir.',
-            });
-        }
-
-        partidaModel.unirsePartida(partida, jugadorId, num);
-        return res.json({ success: true, data: partidaModel.getPartida(partida.id) });
     }
 
-    static jugar(req, res) {
-        const partida = partidaModel.buscarPartida(Number(req.params.id));
-        if (!partida) return res.status(404).json({ success: false, message: 'La partida no existe.' });
+    const { numero, error } = validarNumero(num);
+    if (error) return res.status(400).json({ success: false, message: error });
 
-        const { jugadorId, num } = req.body ?? {};
+    partidaModel.unirsePartida(partida, jugadorId, numero);
+    return res.json({
+      success: true,
+      data: partidaModel.getPartida(partida.id),
+    });
+  }
 
-        if (jugadorId !== partida.creadorId && jugadorId !== partida.segundoId) {
-            return res.status(403).json({ success: false, message: 'No perteneces a esta partida.' });
-        }
-        if (partida.estado !== 'en_juego') {
-            return res.status(409).json({ success: false, message: 'La partida no está en juego.' });
-        }
-        if (partida.turno !== jugadorId) {
-            return res.status(409).json({ success: false, message: 'No es tu turno.' });
-        }
+  static jugar(req, res) {
+    const partida = partidaModel.buscarPartida(Number(req.params.id));
+    if (!partida)
+      return res
+        .status(404)
+        .json({ success: false, message: "La partida no existe." });
 
-        if (!Number.isInteger(num)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Ingresa un número entero sin letras ni comillas.',
-            });
-        }
+    const { jugadorId, num } = req.body ?? {};
 
-        if (num < 1000 || num > 9999) {
-            return res.status(400).json({
-                success: false,
-                message: 'El número debe tener 4 dígitos.',
-            });
-        }
-
-        if (new Set(String(num)).size !== 4) {
-            return res.status(400).json({
-                success: false,
-                message: 'Los dígitos no se pueden repetir.',
-            });
-        }
-
-        const resultado = partidaModel.jugar(partida, jugadorId, num);
-        return res.json({
-            success: true,
-            data: {
-                ...resultado,
-                partida: partidaModel.getPartida(partida.id),
-            },
-        });
-        
+    if (jugadorId !== partida.creadorId && jugadorId !== partida.segundoId) {
+      return res
+        .status(403)
+        .json({ success: false, message: "No perteneces a esta partida." });
     }
+    if (partida.estado !== "en_juego") {
+      return res
+        .status(409)
+        .json({ success: false, message: "La partida no está en juego." });
+    }
+    if (partida.turno !== jugadorId) {
+      return res
+        .status(409)
+        .json({ success: false, message: "No es tu turno." });
+    }
+
+    const { numero, error } = validarNumero(num);
+    if (error) return res.status(400).json({ success: false, message: error });
+
+    if (partidaModel.yaIntentado(partida, jugadorId, numero)) {
+      return res
+        .status(409)
+        .json({
+          success: false,
+          message:
+            "Ya intentaste ese número en esta partida. Prueba uno diferente.",
+        });
+    }
+    const resultado = partidaModel.jugar(partida, jugadorId, numero);
+    return res.json({
+      success: true,
+      data: {
+        ...resultado,
+        partida: partidaModel.getPartida(partida.id),
+      },
+    });
+  }
 }
 
 module.exports = partidaController;
