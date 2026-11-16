@@ -26,6 +26,26 @@ class partidaController {
     static createPartidas(req, res) {
         const {creadorId, num} = req.body ?? {};
 
+        if (!Number.isInteger(num)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Ingresa un número entero sin letras ni comillas.',
+            });
+        }
+
+        if (num < 1000 || num > 9999) {
+            return res.status(400).json({
+                success: false,
+                message: 'El número debe tener 4 dígitos.',
+            });
+        }
+
+        if (new Set(String(num)).size !== 4) {
+            return res.status(400).json({
+                success: false,
+                message: 'Los dígitos no se pueden repetir.',
+            });
+        }
 
         const partida = partidaModel.crearPartida(creadorId, num);
         res.json({
@@ -51,6 +71,26 @@ class partidaController {
             return res.status(409).json({ success: false, message: 'La partida ya tiene dos jugadores.' });
         }
 
+        if (!Number.isInteger(num)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Ingresa un número entero sin letras ni comillas.',
+            });
+        }
+
+        if (num < 1000 || num > 9999) {
+            return res.status(400).json({
+                success: false,
+                message: 'El número debe tener 4 dígitos.',
+            });
+        }
+
+        if (new Set(String(num)).size !== 4) {
+            return res.status(400).json({
+                success: false,
+                message: 'Los dígitos no se pueden repetir.',
+            });
+        }
 
         partidaModel.unirsePartida(partida, jugadorId, num);
         return res.json({ success: true, data: partidaModel.getPartida(partida.id) });
@@ -72,6 +112,26 @@ class partidaController {
             return res.status(409).json({ success: false, message: 'No es tu turno.' });
         }
 
+        if (!Number.isInteger(num)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Ingresa un número entero sin letras ni comillas.',
+            });
+        }
+
+        if (num < 1000 || num > 9999) {
+            return res.status(400).json({
+                success: false,
+                message: 'El número debe tener 4 dígitos.',
+            });
+        }
+
+        if (new Set(String(num)).size !== 4) {
+            return res.status(400).json({
+                success: false,
+                message: 'Los dígitos no se pueden repetir.',
+            });
+        }
 
         const resultado = partidaModel.jugar(partida, jugadorId, num);
         return res.json({
