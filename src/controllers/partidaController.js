@@ -16,6 +16,7 @@ class partidaController {
       data: partida,
     });
   }
+
   static getPartidas(req, res) {
     try {
       const partidas = partidaModel.getPartidas();
@@ -86,12 +87,10 @@ class partidaController {
       });
 
     if (jugadorId === partida.creadorId) {
-      return res
-        .status(409)
-        .json({
-          success: false,
-          message: "No puedes unirte a tu propia partida.",
-        });
+      return res.status(409).json({
+        success: false,
+        message: "No puedes unirte a tu propia partida.",
+      });
     }
 
     if (partida.estado !== "sin_completar") {

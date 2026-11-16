@@ -1,136 +1,209 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Partidas de Picas y Fijas</title>
-</head>
-<body>
-    <h1>Partidas de Picas y Fijas</h1>
-    <p id="saludo"></p>
-    <p><a href="/">Volver al inicio</a></p>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f5f3eb" />
+    <title>Lista de partidas · Picas & Fijas</title>
+    <link rel="stylesheet" href="/css/estilos.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="topbar">
+        <a class="brand" href="/partidas.html"
+          ><span class="brand-mark" aria-hidden="true">p/f</span
+          ><span>Picas & Fijas</span></a
+        >
+        <div class="player-menu">
+          <span id="avatar" class="avatar" aria-hidden="true">J</span
+          ><span id="nombre-jugador"></span
+          ><a class="text-link" href="/">Cambiar jugador</a>
+        </div>
+      </header>
+      <main class="lobby-main">
+        <div class="section-heading list-heading">
+          <div class="heading-inline">
+            <h1>Lista de partidas</h1>
+            <span id="total-partidas" class="count">0</span>
+          </div>
+          <div class="toolbar">
+            <button id="listar" class="button secondary" type="button">
+              Actualizar</button
+            ><button id="crear" class="button primary" type="button">
+              Crear partida
+            </button>
+          </div>
+        </div>
+        <p id="lista-mensaje" class="message" role="status"></p>
+        <p id="sin-partidas" class="empty-state" hidden>
+          No hay partidas. Crea una para comenzar.
+        </p>
+        <ul id="lista" class="match-list" aria-label="Lista de partidas"></ul>
+      </main>
+    </div>
+    <dialog id="partida-dialogo" aria-labelledby="dialogo-titulo">
+      <form id="formulario-partida" class="stack" novalidate>
+        <h2 id="dialogo-titulo">Crear partida</h2>
+        <div id="campo-nombre" class="field">
+          <label for="nombre-partida">Nombre de la partida</label
+          ><input
+            id="nombre-partida"
+            maxlength="60"
+            placeholder="Ej. La revancha"
+            autocomplete="on"
+          />
+        </div>
+        <div class="field">
+          <label for="secreto">Tu código secreto</label
+          ><input
+            id="secreto"
+            class="digit-input"
+            type="text"
+            inputmode="numeric"
+            placeholder="0123"
+            autocomplete="off"
+            spellcheck="false"
+            aria-describedby="secreto-ayuda mensaje"
+          />
+          <p id="secreto-ayuda" class="field-hint">Cuatro dígitos distintos.</p>
+        </div>
+        <p id="mensaje" class="message" role="status" aria-live="polite"></p>
+        <div class="dialog-actions">
+          <button id="cancelar" class="button secondary" type="button">
+            Cancelar</button
+          ><button id="confirmar" class="button primary" type="submit">
+            Crear partida
+          </button>
+        </div>
+      </form>
+    </dialog>
+    <script type="module">
+      import { obtenerElemento, mostrarTexto } from "./js/utils/elementos.js";
+      import { leerJugador, mostrarJugador } from "./js/utils/jugadores.js";
+      import { solicitarDatos } from "./js/utils/peticiones.js";
+      import { leerNumero } from "./js/utils/codigos.js";
+      import { mostrarLista } from "./js/utils/vistasPartidas.js";
 
-    <h2>Crear o unirse a una partida</h2>
-    <label for="secreto">Tu número secreto</label>
-    <input id="secreto" type="password" inputmode="numeric" maxlength="4" autocomplete="off">
-    <button id="crear" type="button">Crear partida</button>
-    <p>Para unirte, escribe tu secreto y pulsa Unirse en una partida abierta.</p>
-    <button id="listar" type="button">Actualizar lista</button>
-    <p id="sin-partidas" hidden>Todavía no hay partidas.</p>
-    <ul id="lista"></ul>
+      const jugador = leerJugador();
+      const campoNombrePartida = obtenerElemento("nombre-partida");
+      const campoCodigoSecreto = obtenerElemento("secreto");
+      const modalPartida = obtenerElemento("partida-dialogo");
+      const botonConfirmarPartida = obtenerElemento("confirmar");
+      const botonCancelarPartida = obtenerElemento("cancelar");
+      const botonListarPartidas = obtenerElemento("listar");
+      const botonCrearPartida = obtenerElemento("crear");
+      const formularioPartida = obtenerElemento("formulario-partida");
+      const contenedorNombrePartida = obtenerElemento("campo-nombre");
 
-    <p id="mensaje" role="status"></p>
+      let partidaAUnirse = null;
+      let guardando = false;
 
-    <script>
-        const elemento = (id) => document.getElementById(id);
-        const mensaje = elemento('mensaje');
-        const jugador = JSON.parse(sessionStorage.getItem('jugador'));
+      function abrirFormularioPartida(partidaSeleccionada = null) {
+        partidaAUnirse = partidaSeleccionada;
+        campoNombrePartida.value = "";
+        campoNombrePartida.required = !partidaSeleccionada;
+        contenedorNombrePartida.hidden = Boolean(partidaSeleccionada);
+        campoCodigoSecreto.value = "";
+        campoCodigoSecreto.removeAttribute("aria-invalid");
+        mostrarTexto("mensaje", "");
+        mostrarTexto(
+          "dialogo-titulo",
+          partidaSeleccionada
+            ? "Entrar a " + partidaSeleccionada.nombre
+            : "Crear partida"
+        );
+        botonConfirmarPartida.textContent = partidaSeleccionada
+          ? "Entrar"
+          : "Crear partida";
+        modalPartida.showModal();
+        (partidaSeleccionada ? campoCodigoSecreto : campoNombrePartida).focus();
+      }
 
-        async function pedir(ruta, metodo = 'GET', datos) {
-            const opciones = { method: metodo };
-            if (datos !== undefined) {
-                opciones.headers = { 'Content-Type': 'application/json' };
-                opciones.body = JSON.stringify(datos);
-            }
+      function verPartida(idPartida) {
+        window.location.href = "/jugar.html?id=" + idPartida;
+      }
 
-            const respuesta = await fetch(ruta, opciones);
-            const resultado = await respuesta.json().catch(() => null);
+      function entrarPartida(partida) {
+        const esPartidaSinCompletarDeOtroJugador =
+          partida.estado === "sin_completar" &&
+          partida.creadorId !== jugador.id;
 
-            if (!respuesta.ok) {
-                throw new Error(resultado?.message ?? metodo + ' ' + ruta + ' devolvió HTTP ' + respuesta.status + '.');
-            }
-            if (resultado === null) {
-                throw new Error('La API debe responder en JSON.');
-            }
-            return resultado;
-        }
-
-        function leerNumero(id) {
-            const valor = elemento(id).value;
-            if (!/^[1-9][0-9]{3}$/.test(valor)) {
-                throw new Error('Ingresa un número entero del 1000 al 9999.');
-            }
-            if (new Set(valor).size !== 4) {
-                throw new Error('Los cuatro dígitos deben ser diferentes.');
-            }
-            return Number(valor);
-        }
-
-        function conectar(boton, accion) {
-            boton.onclick = async () => {
-                mensaje.textContent = '';
-                boton.disabled = true;
-                try {
-                    await accion();
-                } catch (error) {
-                    mensaje.textContent = error.message;
-                } finally {
-                    boton.disabled = false;
-                }
-            };
-        }
-
-        function botonDePartida(texto, accion) {
-            const boton = document.createElement('button');
-            boton.type = 'button';
-            boton.textContent = texto;
-            conectar(boton, accion);
-            return boton;
-        }
-
-        async function listarPartidas() {
-            const respuesta = await pedir('/juego');
-            const partidas = respuesta.data ?? respuesta;
-            const lista = elemento('lista');
-            lista.replaceChildren();
-            elemento('sin-partidas').hidden = partidas.length > 0;
-
-            for (const partida of partidas) {
-                const fila = document.createElement('li');
-                const creador = partida.creador?.nombre ?? partida.creador ?? 'Sin nombre';
-                fila.textContent = 'Partida ' + partida.id + ' | ' + partida.estado + ' | Creada por ' + creador + ' ';
-                fila.append(botonDePartida('Ver estado', () => verPartida(partida.id)));
-
-                if (partida.estado === 'sin_completar' && partida.creadorId !== jugador.id) {
-                    fila.append(' ', botonDePartida('Unirse', () => unirse(partida.id)));
-                }
-
-                lista.append(fila);
-            }
-        }
-
-        async function crearPartida() {
-            const num = leerNumero('secreto');
-            const respuesta = await pedir('/juego', 'POST', { creadorId: jugador.id, num });
-            elemento('secreto').value = '';
-            verPartida(respuesta.data.id);
-        }
-
-        async function unirse(id) {
-            const num = leerNumero('secreto');
-            await pedir('/juego/' + id, 'PUT', {
-                jugadorId: jugador.id,
-                nombre: jugador.nombre,
-                num,
-            });
-            elemento('secreto').value = '';
-            verPartida(id);
-        }
-
-        function verPartida(id) {
-            window.location.href = '/jugar.html?id=' + id;
-        }
-
-        if (jugador?.id) {
-            elemento('saludo').textContent = 'Hola, ' + jugador.nombre;
-            conectar(elemento('crear'), crearPartida);
-            conectar(elemento('listar'), listarPartidas);
-            listarPartidas().catch((error) => {
-                mensaje.textContent = error.message;
-            });
+        if (esPartidaSinCompletarDeOtroJugador) {
+          abrirFormularioPartida(partida);
         } else {
-            window.location.replace('/');
+          verPartida(partida.id);
         }
+      }
+
+      async function actualizarListaPartidas() {
+        if (botonListarPartidas.disabled) return;
+        botonListarPartidas.disabled = true;
+        mostrarTexto("lista-mensaje", "");
+
+        try {
+          const respuesta = await solicitarDatos("/juego");
+          mostrarLista(respuesta.data, entrarPartida);
+        } catch (error) {
+          mostrarTexto("lista-mensaje", error.message);
+        } finally {
+          botonListarPartidas.disabled = false;
+        }
+      }
+
+      async function enviarFormulario(evento) {
+        evento.preventDefault();
+        if (guardando) return;
+
+        mostrarTexto("mensaje", "");
+
+        try {
+          const codigoSecretoIngresado = leerNumero(campoCodigoSecreto);
+          const nombrePartidaIngresado = campoNombrePartida.value.trim();
+
+          if (!partidaAUnirse && !nombrePartidaIngresado) {
+            throw new Error("Escribe un nombre para la partida.");
+          }
+
+          guardando = true;
+          botonCancelarPartida.disabled = true;
+          botonConfirmarPartida.disabled = true;
+
+          if (partidaAUnirse) {
+            await solicitarDatos("/juego/" + partidaAUnirse.id, "PUT", {
+              jugadorId: jugador.id,
+              num: codigoSecretoIngresado,
+            });
+            verPartida(partidaAUnirse.id);
+          } else {
+            const respuesta = await solicitarDatos("/juego", "POST", {
+              creadorId: jugador.id,
+              num: codigoSecretoIngresado,
+              nombre: nombrePartidaIngresado,
+            });
+            verPartida(respuesta.data.id);
+          }
+        } catch (error) {
+          mostrarTexto("mensaje", error.message);
+        } finally {
+          guardando = false;
+          botonCancelarPartida.disabled = false;
+          botonConfirmarPartida.disabled = false;
+        }
+      }
+
+      if (!jugador) {
+        window.location.replace("/");
+      } else {
+        mostrarJugador(jugador);
+        botonCrearPartida.onclick = () => abrirFormularioPartida();
+        botonListarPartidas.onclick = actualizarListaPartidas;
+        botonCancelarPartida.onclick = () => modalPartida.close();
+        modalPartida.oncancel = (eventoCancelacion) => {
+          if (guardando) eventoCancelacion.preventDefault();
+        };
+        formularioPartida.onsubmit = enviarFormulario;
+        actualizarListaPartidas();
+      }
     </script>
-</body>
+  </body>
 </html>

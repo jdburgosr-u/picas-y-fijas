@@ -1,64 +1,112 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Entrar a Picas y Fijas</title>
-</head>
-<body>
-    <h1>Picas y Fijas</h1>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f5f3eb" />
+    <title>Picas & Fijas</title>
+    <link rel="stylesheet" href="/css/estilos.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="topbar">
+        <a class="brand" href="/"
+          ><span class="brand-mark" aria-hidden="true">p/f</span
+          ><span>Picas & Fijas</span></a
+        >
+      </header>
+      <main class="login-layout">
+        <section class="rules" aria-labelledby="reglas-titulo">
+          <h1 id="reglas-titulo">Cómo se juega</h1>
+          <ol class="rules-list">
+            <li>
+              Elige un código secreto de
+              <strong>cuatro dígitos diferentes</strong>. Puede empezar con
+              cero.
+            </li>
+            <li>Intenta adivinar el código de tu rival. Juegan por turnos.</li>
+            <li>
+              Usa las pistas de cada intento. Quien consiga
+              <strong>cuatro fijas</strong>, gana.
+            </li>
+          </ol>
+          <div class="clue-explanation">
+            <p>
+              <span class="score fixed">F</span
+              ><span
+                ><strong>Fija:</strong> dígito correcto en la posición
+                correcta.</span
+              >
+            </p>
+            <p>
+              <span class="score misplaced">P</span
+              ><span
+                ><strong>Pica:</strong> dígito correcto en otra posición.</span
+              >
+            </p>
+          </div>
+          <p class="example">
+            Ejemplo: secreto <strong>4271</strong>, intento
+            <strong>1234</strong>: 1 fija y 2 picas.
+          </p>
+        </section>
+        <section class="panel login-card" aria-labelledby="login-titulo">
+          <h2 id="login-titulo">Ingresa tu nombre</h2>
+          <form id="login" class="stack" novalidate>
+            <div class="field">
+              <label for="nombre">Nombre del jugador</label
+              ><input
+                id="nombre"
+                placeholder="Tu nombre"
+                autocomplete="nickname"
+                maxlength="60"
+                required
+              />
+            </div>
+            <button id="entrar" class="button primary" type="submit">
+              Entrar
+            </button>
+          </form>
+          <p id="mensaje" class="message" role="status" aria-live="polite"></p>
+        </section>
+      </main>
+    </div>
+    <script type="module">
+      import { obtenerElemento } from "./js/utils/elementos.js";
+      import { guardarJugador } from "./js/utils/jugadores.js";
+      import { solicitarDatos } from "./js/utils/peticiones.js";
 
-    <form id="login">
-        <label for="nombre">Nombre</label>
-        <input id="nombre" autocomplete="given-name" required>
-        <button id="entrar" type="submit">Entrar</button>
-    </form>
+      const formulario = obtenerElemento("login");
+      const campoNombre = obtenerElemento("nombre");
+      const mensaje = obtenerElemento("mensaje");
+      const botonEntrar = obtenerElemento("entrar");
 
-    <p id="mensaje" role="status"></p>
+      async function registrarJugador(evento) {
+        evento.preventDefault();
+        if (botonEntrar.disabled) return;
+        const nombre = campoNombre.value.trim();
+        mensaje.textContent = "";
+        if (!nombre) {
+          mensaje.textContent = "Escribe tu nombre para entrar.";
+          campoNombre.focus();
+          return;
+        }
 
-    <script>
-        const formulario = document.getElementById('login');
-        const boton = document.getElementById('entrar');
-        const mensaje = document.getElementById('mensaje');
+        botonEntrar.disabled = true;
+        try {
+          const resultado = await solicitarDatos("/login", "POST", { nombre });
+          if (!resultado.data?.id)
+            throw new Error("No pudimos registrar al jugador.");
+          guardarJugador({ id: resultado.data.id, nombre });
+          window.location.href = "/partidas.html";
+        } catch (error) {
+          mensaje.textContent = error.message;
+        } finally {
+          botonEntrar.disabled = false;
+        }
+      }
 
-        formulario.onsubmit = async (evento) => {
-            evento.preventDefault();
-            const nombre = document.getElementById('nombre').value.trim();
-
-            if (!nombre) {
-                mensaje.textContent = 'Escribe tu nombre.';
-                return;
-            }
-
-            boton.disabled = true;
-            mensaje.textContent = '';
-
-            try {
-                const respuesta = await fetch('/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ nombre }),
-                });
-                const resultado = await respuesta.json().catch(() => null);
-
-                if (!respuesta.ok) {
-                    throw new Error(resultado?.message ?? 'POST /login devolvió HTTP ' + respuesta.status + '.');
-                }
-
-                const jugador = resultado?.data;
-                if (!jugador?.id) {
-                    throw new Error('El login debe devolver el ID del jugador en data.id.');
-                }
-
-                // Conserva el ID para usarlo en la siguiente página.
-                sessionStorage.setItem('jugador', JSON.stringify({ id: jugador.id, nombre }));
-                window.location.href = '/partidas.html';
-            } catch (error) {
-                mensaje.textContent = error.message;
-            } finally {
-                boton.disabled = false;
-            }
-        };
+      formulario.onsubmit = registrarJugador;
     </script>
-</body>
+  </body>
 </html>

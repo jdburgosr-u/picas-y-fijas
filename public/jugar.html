@@ -1,140 +1,252 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Jugar a Picas y Fijas</title>
-</head>
-<body>
-    <p><a href="/partidas.html">Volver a las partidas</a></p>
-
-    <section id="detalle" hidden>
-        <h1 id="titulo"></h1>
-        <p id="jugadores"></p>
-        <p id="estado"></p>
-        <p id="turno"></p>
-        <p id="ganador"></p>
-        <button id="actualizar" type="button">Actualizar estado</button>
-
-        <p id="jugada" hidden>
-            <label for="intento">Tu intento</label>
-            <input id="intento" inputmode="numeric" maxlength="4" autocomplete="off">
-            <button id="jugar" type="button">Jugar</button>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f5f3eb" />
+    <title>Partida · Picas & Fijas</title>
+    <link rel="stylesheet" href="/css/estilos.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="topbar">
+        <a class="brand" href="/partidas.html"
+          ><span class="brand-mark" aria-hidden="true">p/f</span
+          ><span>Picas & Fijas</span></a
+        >
+        <div class="player-menu">
+          <span id="avatar" class="avatar" aria-hidden="true">J</span
+          ><span id="nombre-jugador"></span
+          ><a class="text-link" href="/partidas.html">Lista de partidas</a>
+        </div>
+      </header>
+      <main class="game-main">
+        <section id="detalle" hidden>
+          <div class="game-heading">
+            <div class="game-title">
+              <span id="numero-partida" class="game-number"></span>
+              <h1 id="titulo">Partida</h1>
+            </div>
+            <span id="estado" class="badge"></span>
+          </div>
+          <div id="distribucion-juego" class="game-layout">
+            <aside
+              id="historial-panel"
+              class="history-sidebar"
+              aria-labelledby="historial-titulo"
+              hidden
+            >
+              <div class="section-heading">
+                <h2 id="historial-titulo">Historial</h2>
+                <span id="cantidad-intentos" class="count">0</span>
+              </div>
+              <p class="history-key">
+                <span class="ink-green">Fijas: posición correcta.</span
+                ><br /><span class="ink-orange">Picas: otra posición.</span>
+              </p>
+              <p id="sin-intentos" class="history-empty">
+                Todavía no has hecho intentos.
+              </p>
+              <div id="tabla-historial" class="table-wrap" hidden>
+                <table>
+                  <caption class="sr-only">
+                    Tus intentos en esta partida
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">#</th>
+                      <th scope="col">Código</th>
+                      <th scope="col">Fijas</th>
+                      <th scope="col">Picas</th>
+                    </tr>
+                  </thead>
+                  <tbody id="historial"></tbody>
+                </table>
+              </div>
+            </aside>
+            <div class="play-column">
+              <section class="players-panel panel" aria-label="Jugadores">
+                <div id="creador-tarjeta" class="player-seat">
+                  <span
+                    id="creador-avatar"
+                    class="seat-avatar"
+                    aria-hidden="true"
+                    >?</span
+                  ><span class="seat-details"
+                    ><span id="creador-etiqueta" class="seat-label"
+                      >JUGADOR 1</span
+                    ><strong id="creador-nombre"></strong></span
+                  ><span class="turn-dot" aria-label="En turno" hidden></span>
+                </div>
+                <span class="versus" aria-hidden="true">vs.</span>
+                <div id="segundo-tarjeta" class="player-seat">
+                  <span
+                    id="segundo-avatar"
+                    class="seat-avatar"
+                    aria-hidden="true"
+                    >?</span
+                  ><span class="seat-details"
+                    ><span id="segundo-etiqueta" class="seat-label"
+                      >JUGADOR 2</span
+                    ><strong id="segundo-nombre"></strong></span
+                  ><span class="turn-dot" aria-label="En turno" hidden></span>
+                </div>
+              </section>
+              <div
+                id="turno-panel"
+                class="turn-banner"
+                role="status"
+                aria-live="polite"
+              >
+                <p id="turno"></p>
+              </div>
+              <p id="ganador" class="winner-banner" role="status" hidden></p>
+              <section id="jugada" class="panel guess-card" hidden>
+                <form id="formulario-jugada" class="stack" novalidate>
+                  <label for="intento">Tu siguiente intento</label>
+                  <div class="guess-controls">
+                    <input
+                      id="intento"
+                      class="digit-input"
+                      type="text"
+                      inputmode="numeric"
+                      placeholder="0123"
+                      autocomplete="off"
+                      spellcheck="false"
+                      aria-describedby="mensaje"
+                    /><button id="jugar" class="button primary" type="submit">
+                      Probar
+                    </button>
+                  </div>
+                </form>
+              </section>
+              <p
+                id="mensaje"
+                class="message"
+                role="status"
+                aria-live="polite"
+              ></p>
+              <div class="game-tools">
+                <span id="conexion" class="sync-status">Consultando partida…</span>
+              </div>
+            </div>
+          </div>
+        </section>
+        <p id="carga" class="loading-message" role="status">
+          Cargando partida…
         </p>
-        <p id="puntuacion" role="status"></p>
-    </section>
-    <p id="mensaje" role="status"></p>
+      </main>
+    </div>
+    <script type="module">
+      import { obtenerElemento, mostrarTexto } from "./js/utils/elementos.js";
+      import { leerJugador, mostrarJugador } from "./js/utils/jugadores.js";
+      import { solicitarDatos } from "./js/utils/peticiones.js";
+      import { leerNumero, numeroIntentado } from "./js/utils/codigos.js";
+      import {
+        mostrarPartida,
+        mostrarConexion,
+      } from "./js/utils/vistasPartidas.js";
+      import { configurarActualizacionPartida } from "./js/utils/actualizacionPartida.js";
 
-    <script>
-        const elemento = (id) => document.getElementById(id);
-        const mensaje = elemento('mensaje');
-        const jugador = JSON.parse(sessionStorage.getItem('jugador'));
-        const partidaActual = Number(new URLSearchParams(window.location.search).get('id'));
-        let actualizacion;
-        let consulta = 0;
+      const jugador = leerJugador();
+      const idPartida = Number(
+        new URLSearchParams(window.location.search).get("id")
+      );
+      const campoIntento = obtenerElemento("intento");
+      const botonProbarIntento = obtenerElemento("jugar");
+      const formularioJugada = obtenerElemento("formulario-jugada");
+      const panelJugada = obtenerElemento("jugada");
 
-        async function pedir(ruta, metodo = 'GET', datos) {
-            const opciones = { method: metodo };
-            if (datos !== undefined) {
-                opciones.headers = { 'Content-Type': 'application/json' };
-                opciones.body = JSON.stringify(datos);
-            }
+      let partida = null;
+      let enviandoCodigo = false;
+      let actualizacionPartida;
 
-            const respuesta = await fetch(ruta, opciones);
-            const resultado = await respuesta.json().catch(() => null);
+      function actualizarControles() {
+        if (!partida) return;
+        const participaEnPartida =
+          partida.creadorId === jugador.id || partida.segundoId === jugador.id;
+        const puedeProbarIntento =
+          participaEnPartida &&
+          partida.estado === "en_juego" &&
+          partida.turnoId === jugador.id &&
+          !enviandoCodigo;
 
-            if (!respuesta.ok) {
-                throw new Error(resultado?.message ?? metodo + ' ' + ruta + ' devolvió HTTP ' + respuesta.status + '.');
-            }
-            if (resultado === null) {
-                throw new Error('La API debe responder en JSON.');
-            }
-            return resultado;
+        panelJugada.hidden = !participaEnPartida || partida.estado !== "en_juego";
+        campoIntento.disabled = !puedeProbarIntento;
+        botonProbarIntento.disabled = !puedeProbarIntento;
+      }
+
+      function recibirPartida(datosPartida) {
+        partida = datosPartida;
+        mostrarPartida(partida, jugador);
+        actualizarControles();
+        mostrarConexion();
+      }
+
+      function mostrarErrorConsulta(error) {
+        mostrarConexion(error);
+        if (!partida) {
+          mostrarTexto("carga", error.message);
+        } else if (error.status === 404) {
+          mostrarTexto("mensaje", error.message);
         }
+      }
 
-        function leerNumero(id) {
-            const valor = elemento(id).value;
-            if (!/^[1-9][0-9]{3}$/.test(valor)) {
-                throw new Error('Ingresa un número entero del 1000 al 9999.');
-            }
-            if (new Set(valor).size !== 4) {
-                throw new Error('Los cuatro dígitos deben ser diferentes.');
-            }
-            return Number(valor);
+      async function enviarIntento(evento) {
+        evento.preventDefault();
+        if (enviandoCodigo || !partida) return;
+
+        mostrarTexto("mensaje", "");
+
+        try {
+          if (partida.turnoId !== jugador.id) {
+            throw new Error("Espera tu turno para probar un número.");
+          }
+
+          const codigoSecretoIngresado = leerNumero(campoIntento);
+
+          if (numeroIntentado(partida.historial, codigoSecretoIngresado)) {
+            campoIntento.setAttribute("aria-invalid", "true");
+            throw new Error(
+              "Ya intentaste ese número. Revisa tus pistas y prueba uno diferente."
+            );
+          }
+
+          enviandoCodigo = true;
+          actualizarControles();
+          actualizacionPartida.pausar();
+
+          const respuesta = await solicitarDatos(
+            "/juego/" + idPartida + "/jugar",
+            "POST",
+            { jugadorId: jugador.id, num: codigoSecretoIngresado }
+          );
+
+          campoIntento.value = "";
+          recibirPartida(respuesta.data.partida);
+        } catch (error) {
+          mostrarTexto("mensaje", error.message);
+        } finally {
+          enviandoCodigo = false;
+          actualizarControles();
+          actualizacionPartida.reanudar();
         }
+      }
 
-        function conectar(boton, accion) {
-            boton.onclick = async () => {
-                mensaje.textContent = '';
-                boton.disabled = true;
-                try {
-                    await accion();
-                } catch (error) {
-                    mensaje.textContent = error.message;
-                } finally {
-                    boton.disabled = false;
-                }
-            };
-        }
-
-        async function verPartida(automatica = false) {
-            const id = partidaActual;
-            clearTimeout(actualizacion);
-            const consultaActual = ++consulta;
-
-            try {
-                const respuesta = await pedir('/juego/' + id);
-                if (consultaActual !== consulta) return;
-                const partida = respuesta.data ?? respuesta;
-
-                elemento('detalle').hidden = false;
-                elemento('titulo').textContent = 'Partida ' + id;
-                elemento('jugadores').textContent = 'Jugador 1: ' + partida.creador +
-                    ' | Jugador 2: ' + partida.segundo;
-                elemento('estado').textContent = 'Estado: ' + partida.estado;
-
-                const turno = partida.turno;
-                const ganador = partida.ganador;
-                elemento('turno').textContent = partida.estado === 'sin_completar'
-                    ? 'Esperando al segundo jugador.'
-                    : 'Turno: ' + turno;
-                elemento('ganador').textContent = 'Ganador: ' + ganador;
-                elemento('jugada').hidden = partida.estado !== 'en_juego';
-
-                if (partida.estado !== 'terminado') {
-                    actualizacion = setTimeout(verPartida, 2000, true);
-                }
-            } catch (error) {
-                if (!automatica) throw error;
-                if (consultaActual === consulta) mensaje.textContent = error.message;
-            }
-        }
-
-        async function jugar() {
-            const id = partidaActual;
-            const num = leerNumero('intento');
-            const respuesta = await pedir('/juego/' + id + '/jugar', 'POST', {
-                jugadorId: jugador.id,
-                num,
-            });
-            const resultado = respuesta.data ?? respuesta;
-            elemento('intento').value = '';
-            elemento('puntuacion').textContent =
-                'Picas: ' + resultado.picas + ' | Fijas: ' + resultado.fijas;
-            await verPartida();
-        }
-
-        if (!jugador?.id) {
-            window.location.replace('/');
-        } else if (!Number.isSafeInteger(partidaActual) || partidaActual < 1) {
-            window.location.replace('/partidas.html');
-        } else {
-            conectar(elemento('actualizar'), verPartida);
-            conectar(elemento('jugar'), jugar);
-            verPartida().catch((error) => {
-                mensaje.textContent = error.message;
-            });
-        }
+      if (!jugador) {
+        window.location.replace("/");
+      } else if (!Number.isSafeInteger(idPartida) || idPartida < 1) {
+        window.location.replace("/partidas.html");
+      } else {
+        mostrarJugador(jugador);
+        actualizacionPartida = configurarActualizacionPartida(
+          "/juego/" + idPartida + "?jugadorId=" + jugador.id,
+          recibirPartida,
+          mostrarErrorConsulta
+        );
+        formularioJugada.onsubmit = enviarIntento;
+        actualizacionPartida.actualizar();
+      }
     </script>
-</body>
+  </body>
 </html>
