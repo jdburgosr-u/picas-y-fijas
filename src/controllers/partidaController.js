@@ -36,19 +36,21 @@ class partidaController {
 
   static createPartidas(req, res) {
     const { creadorId, num, nombre } = req.body ?? {};
+    if (!jugadores.has(creadorId)) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Primero registra el jugador." });
+    }
     if (
       nombre !== undefined &&
       (typeof nombre !== "string" ||
         !nombre.trim() ||
         nombre.trim().length > 60)
     ) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message:
-            "El nombre de la partida debe tener entre 1 y 60 caracteres.",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "El nombre de la partida debe tener entre 1 y 60 caracteres.",
+      });
     }
 
     const { numero, error } = validarNumero(num);
@@ -83,13 +85,20 @@ class partidaController {
         message: "Primero inicia sesión.",
       });
 
-    if (partida.estado !== "sin_completar") {
+    if (jugadorId === partida.creadorId) {
       return res
         .status(409)
         .json({
           success: false,
-          message: "La partida ya tiene dos jugadores.",
+          message: "No puedes unirte a tu propia partida.",
         });
+    }
+
+    if (partida.estado !== "sin_completar") {
+      return res.status(409).json({
+        success: false,
+        message: "La partida ya tiene dos jugadores.",
+      });
     }
 
     const { numero, error } = validarNumero(num);
@@ -131,13 +140,11 @@ class partidaController {
     if (error) return res.status(400).json({ success: false, message: error });
 
     if (partidaModel.yaIntentado(partida, jugadorId, numero)) {
-      return res
-        .status(409)
-        .json({
-          success: false,
-          message:
-            "Ya intentaste ese número en esta partida. Prueba uno diferente.",
-        });
+      return res.status(409).json({
+        success: false,
+        message:
+          "Ya intentaste ese número en esta partida. Prueba uno diferente.",
+      });
     }
     const resultado = partidaModel.jugar(partida, jugadorId, numero);
     return res.json({
