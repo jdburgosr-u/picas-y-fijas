@@ -6,7 +6,7 @@ class partidaModel {
     return partidas.get(id);
   }
 
-  static getPartida(id) {
+  static getPartida(id, jugadorId) {
     const partida = partidas.get(id);
     if (!partida) return null;
 
@@ -14,11 +14,17 @@ class partidaModel {
       id: partida.id,
       nombre: partida.nombre,
       creadorId: partida.creadorId,
+      segundoId: partida.segundoId,
       creador: jugadores.get(partida.creadorId)?.nombre ?? "-",
       segundo: jugadores.get(partida.segundoId)?.nombre ?? "-",
       estado: partida.estado,
+      turnoId: partida.turno,
       turno: jugadores.get(partida.turno)?.nombre ?? "-",
+      ganadorId: partida.ganador,
       ganador: jugadores.get(partida.ganador)?.nombre ?? "-",
+      historial: partida.intentos
+        .filter((intento) => intento.jugadorId === jugadorId)
+        .map(({ num, picas, fijas }) => ({ num, picas, fijas })),
     };
   }
 

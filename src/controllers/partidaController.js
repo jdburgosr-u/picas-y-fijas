@@ -5,7 +5,7 @@ const validarNumero = require("../utils/validarNumero");
 class partidaController {
   static mostrarPartida(req, res) {
     const id = Number(req.params.id);
-    const partida = partidaModel.getPartida(id);
+    const partida = partidaModel.getPartida(id, Number(req.query.jugadorId));
     if (!partida)
       return res
         .status(404)
@@ -64,7 +64,7 @@ class partidaController {
     res.json({
       success: true,
       message: "Partida creada correctamente",
-      data: partidaModel.getPartida(partida.id),
+      data: partidaModel.getPartida(partida.id, creadorId),
     });
   }
 
@@ -107,7 +107,7 @@ class partidaController {
     partidaModel.unirsePartida(partida, jugadorId, numero);
     return res.json({
       success: true,
-      data: partidaModel.getPartida(partida.id),
+      data: partidaModel.getPartida(partida.id, jugadorId),
     });
   }
 
@@ -151,7 +151,7 @@ class partidaController {
       success: true,
       data: {
         ...resultado,
-        partida: partidaModel.getPartida(partida.id),
+        partida: partidaModel.getPartida(partida.id, jugadorId),
       },
     });
   }
