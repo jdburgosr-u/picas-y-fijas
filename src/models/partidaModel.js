@@ -24,6 +24,15 @@ class partidaModel {
     partidas.set(id, partida);
     return partida;
   }
+  static unirsePartida(partida, jugadorId, num) {
+        partida.segundoId = jugadorId;
+        partida.segundoNumero = num;
+        partida.estado = 'en_juego';
+
+        const participantes = [partida.creadorId, partida.segundoId];
+        partida.turno = participantes[randomInt(2)];
+    }
+
     static getPartida(id) {
         const partida = partidas.get(id);
         if (!partida) return null;

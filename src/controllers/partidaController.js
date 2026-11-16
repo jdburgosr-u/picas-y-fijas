@@ -35,6 +35,27 @@ class partidaController {
         });
     }
 
+    static unirsePartida(req, res) {
+        const id = Number(req.params.id);
+        const partida = partidaModel.buscarPartida(id);
+
+        const { jugadorId, nombre, num } = req.body ?? {};
+        const jugador = jugadores.get(jugadorId);
+
+        if (!jugador) return res.status(401).json({ 
+            success: false, 
+            message: 'Primero inicia sesión.' 
+        });
+
+        if (partida.estado !== 'sin_completar') {
+            return res.status(409).json({ success: false, message: 'La partida ya tiene dos jugadores.' });
+        }
+
+
+        partidaModel.unirsePartida(partida, jugadorId, num);
+        return res.json({ success: true, data: partidaModel.getPartida(partida.id) });
+    }
+
 
 }
 
